@@ -238,6 +238,8 @@ func init() {
 	json.Unmarshal(jsonText, &estateSearchCondition)
 }
 
+var cachedEstates []Estate
+
 func main() {
 	// Echo instance
 	e := echo.New()
@@ -688,6 +690,10 @@ func postEstate(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	var initEstate []Estate
+	cachedEstates = initEstate
+
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -799,6 +805,10 @@ func searchEstates(c echo.Context) error {
 }
 
 func getLowPricedEstate(c echo.Context) error {
+	if cachedEstates != nil {
+		return c.JSON(http.StatusOK, EstateListResponse{Estates: cachedEstates})
+	}
+
 	estates := make([]Estate, 0, Limit)
 	query := `SELECT * FROM estate ORDER BY rent ASC, id ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
@@ -810,6 +820,8 @@ func getLowPricedEstate(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedEstate DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	cachedEstates = estates
 
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
