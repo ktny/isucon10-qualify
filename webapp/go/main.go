@@ -310,6 +310,9 @@ func initialize(c echo.Context) error {
 		}
 	}
 
+	cachedLowPricedChair.SetItems([]Chair{})
+	cachedLowPricedEstate.SetItems([]Estate{})
+
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "go",
 	})
