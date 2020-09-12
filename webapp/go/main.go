@@ -508,7 +508,7 @@ func searchChairs(c echo.Context) error {
 	searchQuery := "SELECT * FROM chair WHERE "
 	countQuery := "SELECT COUNT(*) FROM chair WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
-	limitOffset := " ORDER BY popularity DESC LIMIT ? OFFSET ?"
+	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res ChairSearchResponse
 	err = db.Get(&res.Count, countQuery+searchCondition, params...)
@@ -528,15 +528,15 @@ func searchChairs(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	sort.Slice(chairs, func(i, j int) bool {
-		if chairs[i].Popularity > chairs[j].Popularity {
-			return true
-		}
-		if chairs[i].Popularity < chairs[j].Popularity {
-			return false
-		}
-		return chairs[i].ID < chairs[j].ID
-	})
+	// sort.Slice(chairs, func(i, j int) bool {
+	// 	if chairs[i].Popularity > chairs[j].Popularity {
+	// 		return true
+	// 	}
+	// 	if chairs[i].Popularity < chairs[j].Popularity {
+	// 		return false
+	// 	}
+	// 	return chairs[i].ID < chairs[j].ID
+	// })
 
 	res.Chairs = chairs
 
