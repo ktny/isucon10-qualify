@@ -238,6 +238,7 @@ func init() {
 	json.Unmarshal(jsonText, &estateSearchCondition)
 }
 
+// getLowPricedEstateで使用
 var cachedEstates []Estate
 
 func main() {
