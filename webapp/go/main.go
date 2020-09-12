@@ -18,7 +18,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
-	"github.com/paulmach/orb"
 )
 
 const Limit = 20
@@ -60,19 +59,18 @@ type ChairListResponse struct {
 
 //Estate 物件
 type Estate struct {
-	ID          int64     `db:"id" json:"id"`
-	Thumbnail   string    `db:"thumbnail" json:"thumbnail"`
-	Name        string    `db:"name" json:"name"`
-	Description string    `db:"description" json:"description"`
-	Latitude    float64   `db:"latitude" json:"latitude"`
-	Longitude   float64   `db:"longitude" json:"longitude"`
-	Loc         orb.Point `db:"loc" json:"-"`
-	Address     string    `db:"address" json:"address"`
-	Rent        int64     `db:"rent" json:"rent"`
-	DoorHeight  int64     `db:"door_height" json:"doorHeight"`
-	DoorWidth   int64     `db:"door_width" json:"doorWidth"`
-	Features    string    `db:"features" json:"features"`
-	Popularity  int64     `db:"popularity" json:"-"`
+	ID          int64   `db:"id" json:"id"`
+	Thumbnail   string  `db:"thumbnail" json:"thumbnail"`
+	Name        string  `db:"name" json:"name"`
+	Description string  `db:"description" json:"description"`
+	Latitude    float64 `db:"latitude" json:"latitude"`
+	Longitude   float64 `db:"longitude" json:"longitude"`
+	Address     string  `db:"address" json:"address"`
+	Rent        int64   `db:"rent" json:"rent"`
+	DoorHeight  int64   `db:"door_height" json:"doorHeight"`
+	DoorWidth   int64   `db:"door_width" json:"doorWidth"`
+	Features    string  `db:"features" json:"features"`
+	Popularity  int64   `db:"popularity" json:"-"`
 }
 
 //EstateSearchResponse estate/searchへのレスポンスの形式
@@ -224,7 +222,11 @@ func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 	return sqlx.Open("mysql", dsn)
 }
 
+var estateColumnsStr string
+
 func init() {
+	estateColumnsStr = "id, thumbnail, name, description, latitude, longitude, address, rent,door_height, door_width, features, popularity"
+
 	jsonText, err := ioutil.ReadFile("../fixture/chair_condition.json")
 	if err != nil {
 		fmt.Printf("%v\n", err)
@@ -850,7 +852,7 @@ func getLowPricedEstate(c echo.Context) error {
 	}
 
 	estates := make([]Estate, 0, Limit)
-	query := `SELECT * FROM estate ORDER BY rent ASC LIMIT ?`
+	query := `SELECT ` + estateColumnsStr + ` FROM estate ORDER BY rent ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
