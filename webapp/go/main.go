@@ -392,6 +392,7 @@ func postChair(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+	cachedLowPricedChair.SetItems([]Chair{})
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -580,6 +581,7 @@ func buyChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	cachedLowPricedChair.SetItems([]Chair{})
 	return c.NoContent(http.StatusOK)
 }
 
@@ -587,8 +589,34 @@ func getChairSearchCondition(c echo.Context) error {
 	return c.JSON(http.StatusOK, chairSearchCondition)
 }
 
+var cachedLowPricedChair CacheLowPricedChair
+
+type CacheLowPricedChair struct {
+	sync.RWMutex
+	items []Chair
+}
+
+func (c *CacheLowPricedChair) GetItems() []Chair {
+	c.RLock()
+	items := c.items
+	c.RUnlock()
+	return items
+}
+
+func (c *CacheLowPricedChair) SetItems(items []Chair) {
+	c.Lock()
+	c.items = items
+	c.Unlock()
+}
+
 func getLowPricedChair(c echo.Context) error {
-	var chairs []Chair
+	cacheItems := cachedLowPricedChair.GetItems()
+
+	if len(cacheItems) > 0 {
+		return c.JSON(http.StatusOK, ChairListResponse{Chairs: cacheItems})
+	}
+
+	chairs := make([]Chair, 0, Limit)
 	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
 	err := db.Select(&chairs, query, Limit)
 	if err != nil {
@@ -599,6 +627,8 @@ func getLowPricedChair(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedChair DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	cachedLowPricedChair.SetItems(chairs)
 
 	return c.JSON(http.StatusOK, ChairListResponse{Chairs: chairs})
 }
