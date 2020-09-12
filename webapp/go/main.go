@@ -225,7 +225,7 @@ func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 var estateColumnsStr string
 
 func init() {
-	estateColumnsStr = "id, thumbnail, name, description, latitude, longitude, address, rent,door_height, door_width, features, popularity"
+	estateColumnsStr = " id, thumbnail, name, description, latitude, longitude, address, rent,door_height, door_width, features, popularity "
 
 	jsonText, err := ioutil.ReadFile("../fixture/chair_condition.json")
 	if err != nil {
@@ -860,8 +860,8 @@ func getLowPricedEstate(c echo.Context) error {
 	}
 
 	estates := make([]Estate, 0, Limit)
-	query := `SELECT ` + estateColumnsStr + ` FROM estate ORDER BY rent ASC LIMIT ?`
-	err := db.Select(&estates, query, Limit)
+	query := `SELECT ? FROM estate ORDER BY rent ASC LIMIT ?`
+	err := db.Select(&estates, query, estateColumnsStr, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.Logger().Error("getLowPricedEstate not found")
