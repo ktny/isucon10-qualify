@@ -238,11 +238,6 @@ func init() {
 	json.Unmarshal(jsonText, &estateSearchCondition)
 }
 
-// getLowPricedChairで使用
-var cachedLowPricedChair []Chair
-
-var cachedEstates []Estate
-
 func main() {
 	// Echo instance
 	e := echo.New()
@@ -396,9 +391,6 @@ func postChair(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedLowPricedChair = []Chair{}
-
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -587,8 +579,6 @@ func buyChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	cachedLowPricedChair = []Chair{}
-
 	return c.NoContent(http.StatusOK)
 }
 
@@ -597,10 +587,6 @@ func getChairSearchCondition(c echo.Context) error {
 }
 
 func getLowPricedChair(c echo.Context) error {
-	if cachedLowPricedChair != nil {
-		return c.JSON(http.StatusOK, ChairListResponse{Chairs: cachedLowPricedChair})
-	}
-
 	var chairs []Chair
 	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
 	err := db.Select(&chairs, query, Limit)
@@ -612,8 +598,6 @@ func getLowPricedChair(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedChair DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedLowPricedChair = chairs
 
 	return c.JSON(http.StatusOK, ChairListResponse{Chairs: chairs})
 }
@@ -704,9 +688,6 @@ func postEstate(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedEstates = []Estate{}
-
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -818,10 +799,6 @@ func searchEstates(c echo.Context) error {
 }
 
 func getLowPricedEstate(c echo.Context) error {
-	if cachedEstates != nil {
-		return c.JSON(http.StatusOK, EstateListResponse{Estates: cachedEstates})
-	}
-
 	estates := make([]Estate, 0, Limit)
 	query := `SELECT * FROM estate ORDER BY rent ASC, id ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
@@ -833,8 +810,6 @@ func getLowPricedEstate(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedEstate DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedEstates = estates
 
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
