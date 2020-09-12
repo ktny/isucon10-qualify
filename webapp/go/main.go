@@ -707,9 +707,12 @@ func postEstate(c echo.Context) error {
 	}
 
 	cachedEstates = []Estate{}
+	cachedEstatesSearchCondition = make(map[string]int64)
 
 	return c.NoContent(http.StatusCreated)
 }
+
+var cachedEstatesSearchCondition map[string]int64
 
 func searchEstates(c echo.Context) error {
 	conditions := make([]string, 0)
@@ -796,10 +799,18 @@ func searchEstates(c echo.Context) error {
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
-	err = db.Get(&res.Count, countQuery+searchCondition, params...)
-	if err != nil {
-		c.Logger().Errorf("searchEstates DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+
+	count, ok := cachedEstatesSearchCondition[searchCondition]
+	if ok {
+		res.Count = count
+	} else {
+		err = db.Get(&res.Count, countQuery+searchCondition, params...)
+		if err != nil {
+			c.Logger().Errorf("searchEstates DB execution error : %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		cachedEstatesSearchCondition[searchCondition] = res.Count
 	}
 
 	estates := []Estate{}
