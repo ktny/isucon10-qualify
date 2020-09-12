@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -776,7 +777,7 @@ func searchEstates(c echo.Context) error {
 	searchQuery := "SELECT * FROM estate WHERE "
 	countQuery := "SELECT COUNT(*) FROM estate WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
-	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
+	limitOffset := " ORDER BY popularity DESC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
 	err = db.Get(&res.Count, countQuery+searchCondition, params...)
@@ -796,9 +797,17 @@ func searchEstates(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	res.Estates = estates
+	sort.Slice(estates, func(i, j int) bool {
+		if estates[i].Popularity > estates[j].Popularity {
+			return true
+		}
+		if estates[i].Popularity < estates[j].Popularity {
+			return false
+		}
+		return estates[i].ID < estates[j].ID
+	})
 
-	return c.JSON(http.StatusOK, res)
+	return c.JSON(http.StatusOK, estates)
 }
 
 var cachedLowPricedEstate CacheLowPricedEstate
