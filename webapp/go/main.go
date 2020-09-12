@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -688,6 +689,8 @@ func postEstate(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	cachedLowPricedEstate.SetItems([]Estate{})
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -798,7 +801,33 @@ func searchEstates(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+var cachedLowPricedEstate CacheLowPricedEstate
+
+type CacheLowPricedEstate struct {
+	sync.RWMutex
+	items []Estate
+}
+
+func (c *CacheLowPricedEstate) GetItems() []Estate {
+	c.RLock()
+	items := c.items
+	c.RUnlock()
+	return items
+}
+
+func (c *CacheLowPricedEstate) SetItems(items []Estate) {
+	c.Lock()
+	c.items = items
+	c.Unlock()
+}
+
 func getLowPricedEstate(c echo.Context) error {
+	cacheItems := cachedLowPricedEstate.GetItems()
+
+	if len(cacheItems) > 0 {
+		return c.JSON(http.StatusOK, EstateListResponse{Estates: cacheItems})
+	}
+
 	estates := make([]Estate, 0, Limit)
 	query := `SELECT * FROM estate ORDER BY rent ASC, id ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
@@ -810,6 +839,8 @@ func getLowPricedEstate(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedEstate DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	cachedLowPricedEstate.SetItems(estates)
 
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
