@@ -688,6 +688,8 @@ func postEstate(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	cachedLowPricedEstate = []Estate{}
 	return c.NoContent(http.StatusCreated)
 }
 
@@ -798,7 +800,13 @@ func searchEstates(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+var cachedLowPricedEstate []Estate
+
 func getLowPricedEstate(c echo.Context) error {
+	if len(cachedLowPricedEstate) > 0 {
+		return c.JSON(http.StatusOK, EstateListResponse{Estates: cachedLowPricedEstate})
+	}
+
 	estates := make([]Estate, 0, Limit)
 	query := `SELECT * FROM estate ORDER BY rent ASC, id ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
@@ -810,6 +818,8 @@ func getLowPricedEstate(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedEstate DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	cachedLowPricedEstate = estates
 
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
