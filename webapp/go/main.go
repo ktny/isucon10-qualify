@@ -691,8 +691,7 @@ func postEstate(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	var initEstate []Estate
-	cachedEstates = initEstate
+	cachedEstates = []Estate{}
 
 	return c.NoContent(http.StatusCreated)
 }
