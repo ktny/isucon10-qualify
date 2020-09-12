@@ -238,12 +238,6 @@ func init() {
 	json.Unmarshal(jsonText, &estateSearchCondition)
 }
 
-// getLowPricedChairで使用
-var cachedLowPricedChair []Chair
-
-// getLowPricedEstateで使用
-var cachedEstates []Estate
-
 func main() {
 	// Echo instance
 	e := echo.New()
@@ -251,17 +245,8 @@ func main() {
 	e.Logger.SetLevel(log.DEBUG)
 
 	// Middleware
-	var err error
-	fp, err := os.OpenFile("logfile.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		e.Use(middleware.Logger())
-		//エラー処理
-		log.Fatal(err)
-	} else {
-		e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-			Output: fp,
-		}))
-	}
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
 	// Initialize
 	e.POST("/initialize", initialize)
@@ -286,6 +271,7 @@ func main() {
 
 	mySQLConnectionData = NewMySQLConnectionEnv()
 
+	var err error
 	db, err = mySQLConnectionData.ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
@@ -405,14 +391,8 @@ func postChair(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedLowPricedChair = []Chair{}
-	cachedChairsSearchCondition = make(map[string]int64)
-
 	return c.NoContent(http.StatusCreated)
 }
-
-var cachedChairsSearchCondition map[string]int64
 
 func searchChairs(c echo.Context) error {
 	conditions := make([]string, 0)
@@ -526,21 +506,12 @@ func searchChairs(c echo.Context) error {
 	countQuery := "SELECT COUNT(*) FROM chair WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
-	// limitOffset := " ORDER BY popularity DESC LIMIT ? OFFSET ?"
 
 	var res ChairSearchResponse
-
-	count, ok := cachedChairsSearchCondition[searchCondition]
-	if ok {
-		res.Count = count
-	} else {
-		err = db.Get(&res.Count, countQuery+searchCondition, params...)
-		if err != nil {
-			c.Logger().Errorf("searchChairs DB execution error : %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		cachedChairsSearchCondition[searchCondition] = res.Count
+	err = db.Get(&res.Count, countQuery+searchCondition, params...)
+	if err != nil {
+		c.Logger().Errorf("searchChairs DB execution error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	chairs := []Chair{}
@@ -608,9 +579,6 @@ func buyChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	cachedLowPricedChair = []Chair{}
-	cachedChairsSearchCondition = make(map[string]int64)
-
 	return c.NoContent(http.StatusOK)
 }
 
@@ -619,10 +587,6 @@ func getChairSearchCondition(c echo.Context) error {
 }
 
 func getLowPricedChair(c echo.Context) error {
-	if cachedLowPricedChair != nil {
-		return c.JSON(http.StatusOK, ChairListResponse{Chairs: cachedLowPricedChair})
-	}
-
 	var chairs []Chair
 	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
 	err := db.Select(&chairs, query, Limit)
@@ -634,8 +598,6 @@ func getLowPricedChair(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedChair DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedLowPricedChair = chairs
 
 	return c.JSON(http.StatusOK, ChairListResponse{Chairs: chairs})
 }
@@ -726,14 +688,8 @@ func postEstate(c echo.Context) error {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedEstates = []Estate{}
-	cachedEstatesSearchCondition = make(map[string]int64)
-
 	return c.NoContent(http.StatusCreated)
 }
-
-var cachedEstatesSearchCondition map[string]int64
 
 func searchEstates(c echo.Context) error {
 	conditions := make([]string, 0)
@@ -817,21 +773,13 @@ func searchEstates(c echo.Context) error {
 	searchQuery := "SELECT * FROM estate WHERE "
 	countQuery := "SELECT COUNT(*) FROM estate WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
-	limitOffset := " ORDER BY popularity DESC LIMIT ? OFFSET ?"
+	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
-
-	count, ok := cachedEstatesSearchCondition[searchCondition]
-	if ok {
-		res.Count = count
-	} else {
-		err = db.Get(&res.Count, countQuery+searchCondition, params...)
-		if err != nil {
-			c.Logger().Errorf("searchEstates DB execution error : %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-
-		cachedEstatesSearchCondition[searchCondition] = res.Count
+	err = db.Get(&res.Count, countQuery+searchCondition, params...)
+	if err != nil {
+		c.Logger().Errorf("searchEstates DB execution error : %v", err)
+		return c.NoContent(http.StatusInternalServerError)
 	}
 
 	estates := []Estate{}
@@ -851,12 +799,8 @@ func searchEstates(c echo.Context) error {
 }
 
 func getLowPricedEstate(c echo.Context) error {
-	if cachedEstates != nil {
-		return c.JSON(http.StatusOK, EstateListResponse{Estates: cachedEstates})
-	}
-
 	estates := make([]Estate, 0, Limit)
-	query := `SELECT * FROM estate ORDER BY rent ASC LIMIT ?`
+	query := `SELECT * FROM estate ORDER BY rent ASC, id ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -866,8 +810,6 @@ func getLowPricedEstate(c echo.Context) error {
 		c.Logger().Errorf("getLowPricedEstate DB execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
-
-	cachedEstates = estates
 
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
@@ -895,7 +837,7 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 	w := chair.Width
 	h := chair.Height
 	d := chair.Depth
-	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity DESC LIMIT ?`
+	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity DESC, id ASC LIMIT ?`
 	err = db.Select(&estates, query, w, h, w, d, h, w, h, d, d, w, d, h, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -922,7 +864,7 @@ func searchEstateNazotte(c echo.Context) error {
 
 	b := coordinates.getBoundingBox()
 	estatesInBoundingBox := []Estate{}
-	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity DESC`
+	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity DESC, id ASC`
 	err = db.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
 	if err == sql.ErrNoRows {
 		c.Echo().Logger.Infof("select * from estate where latitude ...", err)
@@ -932,24 +874,24 @@ func searchEstateNazotte(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	estatesInPolygon := estatesInBoundingBox
-	//	for _, estate := range estatesInBoundingBox {
-	//		validatedEstate := Estate{}
-	//
-	//		point := fmt.Sprintf("'POINT(%f %f)'", estate.Latitude, estate.Longitude)
-	//		query := fmt.Sprintf(`SELECT * FROM estate WHERE id = ? AND ST_Contains(ST_PolygonFromText(%s), ST_GeomFromText(%s))`, coordinates.coordinatesToText(), point)
-	//		err = db.Get(&validatedEstate, query, estate.ID)
-	//		if err != nil {
-	//			if err == sql.ErrNoRows {
-	//				continue
-	//			} else {
-	//				c.Echo().Logger.Errorf("db access is failed on executing validate if estate is in polygon : %v", err)
-	//				return c.NoContent(http.StatusInternalServerError)
-	//			}
-	//		} else {
-	//			estatesInPolygon = append(estatesInPolygon, validatedEstate)
-	//		}
-	//	}
+	estatesInPolygon := []Estate{}
+	for _, estate := range estatesInBoundingBox {
+		validatedEstate := Estate{}
+
+		point := fmt.Sprintf("'POINT(%f %f)'", estate.Latitude, estate.Longitude)
+		query := fmt.Sprintf(`SELECT * FROM estate WHERE id = ? AND ST_Contains(ST_PolygonFromText(%s), ST_GeomFromText(%s))`, coordinates.coordinatesToText(), point)
+		err = db.Get(&validatedEstate, query, estate.ID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				continue
+			} else {
+				c.Echo().Logger.Errorf("db access is failed on executing validate if estate is in polygon : %v", err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+		} else {
+			estatesInPolygon = append(estatesInPolygon, validatedEstate)
+		}
+	}
 
 	var re EstateSearchResponse
 	re.Estates = []Estate{}
