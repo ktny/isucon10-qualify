@@ -251,8 +251,17 @@ func main() {
 	e.Logger.SetLevel(log.DEBUG)
 
 	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+	var err error
+	fp, err := os.OpenFile("logfile.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		e.Use(middleware.Logger())
+		//エラー処理
+		log.Fatal(err)
+	} else {
+		e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+			Output: fp,
+		}))
+	}
 
 	// Initialize
 	e.POST("/initialize", initialize)
@@ -277,7 +286,6 @@ func main() {
 
 	mySQLConnectionData = NewMySQLConnectionEnv()
 
-	var err error
 	db, err = mySQLConnectionData.ConnectDB()
 	if err != nil {
 		e.Logger.Fatalf("DB connection failed : %v", err)
