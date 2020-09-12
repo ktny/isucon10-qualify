@@ -528,6 +528,16 @@ func searchChairs(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	sort.Slice(chairs, func(i, j int) bool {
+		if chairs[i].Popularity > chairs[j].Popularity {
+			return true
+		}
+		if chairs[i].Popularity < chairs[j].Popularity {
+			return false
+		}
+		return chairs[i].ID < chairs[j].ID
+	})
+
 	res.Chairs = chairs
 
 	return c.JSON(http.StatusOK, res)
