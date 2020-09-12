@@ -732,7 +732,41 @@ func postEstate(c echo.Context) error {
 	}
 
 	cachedLowPricedEstate.SetItems([]Estate{})
+	cachedSearchEstateCount.SetItems(make(map[string]int64))
 	return c.NoContent(http.StatusCreated)
+}
+
+var cachedSearchEstateCount CacheSearchEstateCount
+
+type CacheSearchEstateCount struct {
+	sync.RWMutex
+	items map[string]int64
+}
+
+func (c *CacheSearchEstateCount) GetItems() map[string]int64 {
+	c.RLock()
+	items := c.items
+	c.RUnlock()
+	return items
+}
+
+func (c *CacheSearchEstateCount) SetItems(items map[string]int64) {
+	c.Lock()
+	c.items = items
+	c.RUnlock()
+}
+
+func (c *CacheSearchEstateCount) Get(key string) (int64, bool) {
+	c.RLock()
+	v, found := c.items[key]
+	c.RUnlock()
+	return v, found
+}
+
+func (c *CacheSearchEstateCount) Set(key string, value int64) {
+	c.Lock()
+	c.items[key] = value
+	c.Unlock()
 }
 
 func searchEstates(c echo.Context) error {
@@ -820,10 +854,18 @@ func searchEstates(c echo.Context) error {
 	limitOffset := " ORDER BY popularity DESC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
-	err = db.Get(&res.Count, countQuery+searchCondition, params...)
-	if err != nil {
-		c.Logger().Errorf("searchEstates DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+
+	count, found := cachedSearchEstateCount.Get(searchCondition)
+	if found {
+		res.Count = count
+	} else {
+		err = db.Get(&res.Count, countQuery+searchCondition, params...)
+		if err != nil {
+			c.Logger().Errorf("searchEstates DB execution error : %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		cachedSearchEstateCount.Set(searchCondition, res.Count)
 	}
 
 	estates := []Estate{}
