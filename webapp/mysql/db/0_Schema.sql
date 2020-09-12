@@ -8,7 +8,7 @@ CREATE TABLE isuumo.estate
 (
     id          INTEGER             NOT NULL PRIMARY KEY,
     name        VARCHAR(64)         NOT NULL,
-    description VARCHAR(4096)       NOT NULL,
+    description VARCHAR(512)        NOT NULL,
     thumbnail   VARCHAR(128)        NOT NULL,
     address     VARCHAR(128)        NOT NULL,
     latitude    DOUBLE PRECISION    NOT NULL,
@@ -20,14 +20,15 @@ CREATE TABLE isuumo.estate
     popularity  INTEGER             NOT NULL,
     INDEX       idx_rent (rent),
     INDEX       idx_popularity (popularity),
-    INDEX       idx_lat_long (latitude, longitude)
+    INDEX       idx_lat_long (latitude, longitude),
+    INDEX       idx_door_width_height (door_width, door_height),
 );
 
 CREATE TABLE isuumo.chair
 (
     id          INTEGER         NOT NULL PRIMARY KEY,
     name        VARCHAR(64)     NOT NULL,
-    description VARCHAR(4096)   NOT NULL,
+    description VARCHAR(512)    NOT NULL,
     thumbnail   VARCHAR(128)    NOT NULL,
     price       INTEGER         NOT NULL,
     height      INTEGER         NOT NULL,
