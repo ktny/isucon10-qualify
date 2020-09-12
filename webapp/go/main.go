@@ -399,9 +399,12 @@ func postChair(c echo.Context) error {
 	}
 
 	cachedLowPricedChair = []Chair{}
+	cachedChairsSearchCondition = make(map[string]int64)
 
 	return c.NoContent(http.StatusCreated)
 }
+
+var cachedChairsSearchCondition map[string]int64
 
 func searchChairs(c echo.Context) error {
 	conditions := make([]string, 0)
@@ -517,10 +520,18 @@ func searchChairs(c echo.Context) error {
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res ChairSearchResponse
-	err = db.Get(&res.Count, countQuery+searchCondition, params...)
-	if err != nil {
-		c.Logger().Errorf("searchChairs DB execution error : %v", err)
-		return c.NoContent(http.StatusInternalServerError)
+
+	count, ok := cachedChairsSearchCondition[searchCondition]
+	if ok {
+		res.Count = count
+	} else {
+		err = db.Get(&res.Count, countQuery+searchCondition, params...)
+		if err != nil {
+			c.Logger().Errorf("searchChairs DB execution error : %v", err)
+			return c.NoContent(http.StatusInternalServerError)
+		}
+
+		cachedChairsSearchCondition[searchCondition] = res.Count
 	}
 
 	chairs := []Chair{}
@@ -589,6 +600,7 @@ func buyChair(c echo.Context) error {
 	}
 
 	cachedLowPricedChair = []Chair{}
+	cachedChairsSearchCondition = make(map[string]int64)
 
 	return c.NoContent(http.StatusOK)
 }
