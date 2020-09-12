@@ -909,7 +909,7 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 	w := chair.Width
 	h := chair.Height
 	d := chair.Depth
-	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity DESC, id ASC LIMIT ?`
+	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity DESC LIMIT ?`
 	err = db.Select(&estates, query, w, h, w, d, h, w, h, d, d, w, d, h, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -918,6 +918,16 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 		c.Logger().Errorf("Database execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	sort.Slice(estates, func(i, j int) bool {
+		if estates[i].Popularity > estates[j].Popularity {
+			return true
+		}
+		if estates[i].Popularity < estates[j].Popularity {
+			return false
+		}
+		return estates[i].ID < estates[j].ID
+	})
 
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
@@ -936,7 +946,7 @@ func searchEstateNazotte(c echo.Context) error {
 
 	b := coordinates.getBoundingBox()
 	estatesInBoundingBox := []Estate{}
-	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity DESC, id ASC`
+	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity DESC`
 	err = db.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
 	if err == sql.ErrNoRows {
 		c.Echo().Logger.Infof("select * from estate where latitude ...", err)
@@ -945,6 +955,16 @@ func searchEstateNazotte(c echo.Context) error {
 		c.Echo().Logger.Errorf("database execution error : %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	sort.Slice(estatesInBoundingBox, func(i, j int) bool {
+		if estatesInBoundingBox[i].Popularity > estatesInBoundingBox[j].Popularity {
+			return true
+		}
+		if estatesInBoundingBox[i].Popularity < estatesInBoundingBox[j].Popularity {
+			return false
+		}
+		return estatesInBoundingBox[i].ID < estatesInBoundingBox[j].ID
+	})
 
 	estatesInPolygon := []Estate{}
 	for _, estate := range estatesInBoundingBox {
