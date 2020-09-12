@@ -296,6 +296,7 @@ func initialize(c echo.Context) error {
 		filepath.Join(sqlDir, "0_Schema.sql"),
 		filepath.Join(sqlDir, "1_DummyEstateData.sql"),
 		filepath.Join(sqlDir, "2_DummyChairData.sql"),
+		filepath.Join(sqlDir, "3_UpdateEstateData.sql"),
 	}
 
 	for _, p := range paths {
@@ -707,7 +708,7 @@ func postEstate(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		_, err := tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity)
+		_, err := tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, loc, rent, door_height, door_width, features, popularity) VALUES(?,?,?,?,?,?,?,GeomFromText('POINT(?,?)') ?,?,?,?,?)", id, name, description, thumbnail, address, latitude, longitude, latitude, longitude, rent, doorHeight, doorWidth, features, popularity)
 		if err != nil {
 			c.Logger().Errorf("failed to insert estate: %v", err)
 			return c.NoContent(http.StatusInternalServerError)
@@ -911,10 +912,9 @@ func searchEstateNazotte(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	b := coordinates.getBoundingBox()
 	estatesInBoundingBox := []Estate{}
-	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity DESC, id ASC`
-	err = db.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
+	query := `SELECT * FROM estate WHERE ST_Within(?, estate.loc) ORDER BY popularity DESC, id ASC`
+	err = db.Select(&estatesInBoundingBox, query, coordinates.coordinatesToText())
 	if err == sql.ErrNoRows {
 		c.Echo().Logger.Infof("select * from estate where latitude ...", err)
 		return c.JSON(http.StatusOK, EstateSearchResponse{Count: 0, Estates: []Estate{}})
