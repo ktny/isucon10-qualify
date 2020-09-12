@@ -837,7 +837,9 @@ func searchEstates(c echo.Context) error {
 		return estates[i].ID < estates[j].ID
 	})
 
-	return c.JSON(http.StatusOK, estates)
+	res.Estates = estates
+
+	return c.JSON(http.StatusOK, res)
 }
 
 var cachedLowPricedEstate CacheLowPricedEstate
