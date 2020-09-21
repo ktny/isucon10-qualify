@@ -22,6 +22,27 @@ CREATE TABLE isuumo.estate
     point       POINT AS (POINT(latitude, longitude)) STORED NOT NULL,
     door_min    INTEGER AS (LEAST(door_height, door_width)) NOT NULL,
     door_max    INTEGER AS (GREATEST(door_height, door_width)) NOT NULL,
+    door_width_range INTEGER AS (
+case
+when door_width < 80 then 0
+when door_width < 110 then 1
+when door_width < 150 then 2
+else 3
+end) NOT NULL,
+    door_height_range INTEGER AS (
+case
+when door_height < 80 then 0
+when door_height < 110 then 1
+when door_height < 150 then 2
+else 3
+end) NOT NULL,
+    rent_range INTEGER AS (
+case
+when rent < 50000 then 0
+when rent < 100000 then 1
+when rent < 150000 then 2
+else 3
+end) NOT NULL,
     INDEX       idx_rent (rent),
     INDEX       idx_popularity (popularity),
     INDEX       idx_popularity_desc (popularity_desc),
