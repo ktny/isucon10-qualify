@@ -22,6 +22,13 @@ CREATE TABLE isuumo.chair
     popularity_desc INTEGER AS (-popularity) NOT NULL,
     c0          INTEGER AS (LEAST(height, width, depth)) NOT NULL,
     c1          INTEGER AS (height + width + depth - GREATEST(height, width, depth) - LEAST(height, width, depth)) NOT NULL,
+    price_range INTEGER AS (
+case
+when price < 80 then 0
+when price < 110 then 1
+when price < 150 then 2
+else 3
+end)
     INDEX       idx_popularity_desc (popularity_desc),
     INDEX       idx_price (price),
     INDEX       idx_color (color),
