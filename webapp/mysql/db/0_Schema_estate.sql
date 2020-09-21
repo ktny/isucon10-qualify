@@ -24,5 +24,6 @@ CREATE TABLE isuumo.estate
     INDEX       idx_popularity (popularity),
     INDEX       idx_popularity_desc (popularity_desc),
     INDEX       idx_lat_long (latitude, longitude),
-    INDEX       idx_door_width_height (door_width, door_height)
+    INDEX       idx_door_width_height (door_width, door_height),
+    SPATIAL INDEX idx_point (point)
 );
