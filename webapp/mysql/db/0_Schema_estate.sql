@@ -20,6 +20,8 @@ CREATE TABLE isuumo.estate
     popularity  INTEGER             NOT NULL,
     popularity_desc INTEGER AS (-popularity) NOT NULL,
     point       POINT AS (POINT(latitude, longitude)) STORED NOT NULL,
+    door_min    INTEGER AS (LEAST(door_height, door_width)) NOT NULL,
+    door_max    INTEGER AS (GREATEST(door_height, door_width)) NOT NULL,
     INDEX       idx_rent (rent),
     INDEX       idx_popularity (popularity),
     INDEX       idx_popularity_desc (popularity_desc),

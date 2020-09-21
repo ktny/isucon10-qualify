@@ -50,6 +50,8 @@ type Chair struct {
 	Popularity     int64  `db:"popularity" json:"-"`
 	Stock          int64  `db:"stock" json:"-"`
 	PopularityDesc int64  `db:"popularity_desc" json:"-"`
+	C0             int64  `db:"c0" json:"-"`
+	C1             int64  `db:"c1" json:"-"`
 }
 
 type ChairSearchResponse struct {
@@ -77,6 +79,8 @@ type Estate struct {
 	Popularity     int64       `db:"popularity" json:"-"`
 	PopularityDesc int64       `db:"popularity_desc" json:"-"`
 	Point          interface{} `db:"point" json:"-"`
+	DoorMin        int64       `db:"door_min" json:"-"`
+	DoorMax        int64       `db:"door_max" json:"-"`
 }
 
 //EstateSearchResponse estate/searchへのレスポンスの形式
@@ -961,11 +965,11 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 	}
 
 	var estates []Estate
-	w := chair.Width
-	h := chair.Height
-	d := chair.Depth
-	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity_desc ASC, id ASC LIMIT ?`
-	err = db2.Select(&estates, query, w, h, w, d, h, w, h, d, d, w, d, h, Limit)
+	c0 := chair.C0
+	c1 := chair.C1
+
+	query = `SELECT * FROM estate WHERE door_min >= ? AND door_max >= ? ORDER BY popularity_desc ASC, id ASC LIMIT ?`
+	err = db2.Select(&estates, query, c0, c1, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.JSON(http.StatusOK, EstateListResponse{[]Estate{}})
