@@ -28,7 +28,7 @@ when price < 80 then 0
 when price < 110 then 1
 when price < 150 then 2
 else 3
-end)
+end),
     INDEX       idx_popularity_desc (popularity_desc),
     INDEX       idx_price (price),
     INDEX       idx_color (color),
